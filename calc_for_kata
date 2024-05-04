@@ -1,0 +1,143 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+var roman = map[string]int{
+	"C": 100, "XC": 90, "L": 50, "XL": 40, "X": 10, "IX": 9, "VIII": 8, "VII": 7, "VI": 6, "V": 5, "IV": 4, "III": 3, "II": 2, "I": 1,
+}
+
+var operators = map[string]func(int, int) int{
+	"+": func(a, b int) int { return a + b },
+	"-": func(a, b int) int { return a - b },
+	"*": func(a, b int) int { return a * b },
+	"/": func(a, b int) int { return a / b },
+}
+
+const (
+	LOW = "Вывод ошибки, так как строка " +
+		"не является математической операцией."
+	HIGH = "Вывод ошибки, так как формат математической операции " +
+		"не удовлетворяет заданию — два операнда и один оператор (+, -, /, *)."
+	SCALE = "Вывод ошибки, так как используются " +
+		"одновременно разные системы счисления."
+	DIV = "Вывод ошибки, так как в римской системе " +
+		"нет отрицательных чисел."
+	ZERO  = "Вывод ошибки, так как в римской системе нет числа 0."
+	RANGE = "Калькулятор умеет работать только с арабскими целыми " +
+		"числами или римскими цифрами от 1 до 10 включительно"
+)
+var convIntToRoman = [14]int{100,90,50,40,10,9,8,7,6,5,4,3,2,1,}
+func parseInput(input string) (string, []string) {
+	var operatorsData string
+	var operandsData []string
+	for idx := range operators {
+		for _, val := range input {
+			if idx == string(val) {
+				operatorsData += idx
+				operandsData = strings.Split(input, operatorsData)
+			}
+		}
+	}
+	switch {
+	case len(operatorsData) != 1:
+		panic(HIGH)
+	}
+	
+	return operatorsData, operandsData
+}
+func validateOperands(operands []string) bool {
+	for _, op := range operands {
+		if _, err := strconv.Atoi(op); err != nil {
+			_, ok := roman[op]
+			switch{
+			case roman[op] > 10:
+				panic(RANGE)
+			}
+			if !ok {
+				return false
+			}
+		}
+		var a int
+		a, _  = strconv.Atoi(op)
+		switch{
+		case a > 10:
+			panic(RANGE)
+		}
+	}
+
+	return true
+}
+func inputValidation(operator string, operands []string) (string, []string) {
+	if _, err := strconv.Atoi(operands[0]); err == nil {
+		if _, err := strconv.Atoi(operands[1]); err != nil {
+		panic(SCALE)
+	}
+	} else {
+		if _, err := strconv.Atoi(operands[1]); err == nil {
+			panic(SCALE)
+		}
+	}
+	return operator, operands
+}
+func intToRoman(romanResult int) string{
+	var romanNum string
+	if romanResult == 0 {
+		panic(ZERO)
+	} else if romanResult < 0 {
+		panic(DIV)
+	}
+	for romanResult > 0 {
+		for _, elem := range convIntToRoman {
+			for i := elem; i <= romanResult; {
+				for index, value := range roman {
+					if value == elem {
+						romanNum += index
+						romanResult -= elem
+					}
+				}
+			}
+		}
+	}
+	return romanNum
+}
+func executeOperation(operator string, operands []string) interface{} {
+	if _, err := strconv.Atoi(operands[0]); err == nil {
+			a, _ := strconv.Atoi(operands[0])
+			b, _ := strconv.Atoi(operands[1])
+			return operators[operator](a, b)
+	} else {
+		a := roman[operands[0]]
+		b := roman[operands[1]]
+		result := operators[operator](a, b)
+		//fmt.Printf("Operator: %s\n", result)
+		return intToRoman(result)
+	}
+}
+func main() {
+	fmt.Println("Вас приветствует приложение Калькулятора!")
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		console, err := reader.ReadString('\n')
+		if err != nil {
+			panic("ReadString Error")
+		}
+		console = strings.TrimSpace(console)
+		operator, operands := parseInput(strings.ToUpper(console))
+		inputValidation(operator, operands)
+		if operator == "" {
+			panic("Invalid operation")
+		}
+		if validateOperands(operands) {
+			result := executeOperation(operator, operands)
+			fmt.Println(result)
+		} else {
+			panic("Invalid operands")
+		}
+	}
+}
